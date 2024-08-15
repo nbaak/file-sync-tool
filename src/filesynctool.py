@@ -5,6 +5,7 @@ import hashlib
 import argparse
 import shutil
 
+
 def calculate_sha256(file_path):
     """Calculate the SHA-256 hash of the file."""
     sha256_hash = hashlib.sha256()
@@ -12,6 +13,7 @@ def calculate_sha256(file_path):
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
     return sha256_hash.hexdigest()
+
 
 def get_files_and_hashes(directory):
     """Get a list of file names and their corresponding SHA-256 hashes, including subfolder paths."""
@@ -24,11 +26,13 @@ def get_files_and_hashes(directory):
             files_and_hashes.append((relative_path, file_hash))
     return files_and_hashes
 
+
 def write_hashes_to_file(files_and_hashes, output_file):
     """Write the file names and their hashes to a text file."""
     with open(output_file, "w") as f:
         for file_name, file_hash in files_and_hashes:
             f.write(f"{file_name}: {file_hash}\n")
+
 
 def ensure_destination_exists(dest_file, dest_folder):
     """Ensure the destination folder exists, creating it if necessary."""
@@ -37,6 +41,7 @@ def ensure_destination_exists(dest_file, dest_folder):
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
     return dest_path
+
 
 def check_for_overwrites(source_directory, dest_directory):
     """Check if there are files in the destination directory that would be overwritten."""
@@ -62,6 +67,7 @@ def check_for_overwrites(source_directory, dest_directory):
     else:
         print("No files would be overwritten.")
 
+
 def copy_files_if_needed(source_directory, dest_directory):
     """Copy files from source to destination if they don't exist or have different hash values."""
     for root, dirs, files in os.walk(source_directory):
@@ -82,6 +88,7 @@ def copy_files_if_needed(source_directory, dest_directory):
                     # Hashes differ, so copy the file
                     shutil.copy2(src_path, dest_path)
                     print(f"Updated: {src_path} to {dest_path}")
+
 
 def main():
     parser = argparse.ArgumentParser(description='Compute SHA-256 hashes for files in a source directory, optionally copy them to a destination directory and check for potential overwrites.')
@@ -116,7 +123,7 @@ def main():
         else:
             copy_files_if_needed(args.folder, args.destination)
 
+
 if __name__ == "__main__":
     main()
-
 
