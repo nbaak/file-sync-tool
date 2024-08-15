@@ -4,6 +4,8 @@ import os
 import hashlib
 import argparse
 import shutil
+import sys
+import fnmatch
 
 
 def calculate_sha256(file_path):
@@ -28,8 +30,8 @@ def get_files_and_hashes(directory):
 
 
 def write_hashes_to_file(files_and_hashes, output_file):
-    """Write the file names and their hashes to a text file."""
-    with open(output_file, "w") as f:
+    """Write the file names and their hashes to a text file with UTF-8 encoding."""
+    with open(output_file, "w", encoding="utf-8") as f:
         for file_name, file_hash in files_and_hashes:
             f.write(f"{file_name}: {file_hash}\n")
 
@@ -44,34 +46,68 @@ def ensure_destination_exists(dest_file, dest_folder):
 
 
 def check_for_overwrites(source_directory, dest_directory):
-    """Check if there are files in the destination directory that would be overwritten."""
+    """Check if there are files in the destination directory that would be overwritten or added."""
     files_to_check = get_files_and_hashes(source_directory)
     overwrite_files = []
-    
+    files_in_destination = {}
+
+    # Read all files and their hashes from the destination directory
+    for root, dirs, files in os.walk(dest_directory):
+        for file_name in files:
+            relative_path = os.path.relpath(os.path.join(root, file_name), dest_directory)
+            dest_path = os.path.join(dest_directory, relative_path)
+            if not should_exclude(file_name):
+                dest_hash = calculate_sha256(dest_path)
+                files_in_destination[relative_path] = dest_hash
+
+    # Check for files that would be overwritten or need to be copied
     for relative_path, src_hash in files_to_check:
         src_path = os.path.join(source_directory, relative_path)
         dest_path = os.path.join(dest_directory, relative_path)
         
-        if os.path.exists(dest_path):
-            dest_hash = calculate_sha256(dest_path)
+        if relative_path in files_in_destination:
+            dest_hash = files_in_destination[relative_path]
             if dest_hash != src_hash:
                 overwrite_files.append((relative_path, src_path, dest_path))
-    
+        else:
+            # File is in source but not in destination
+            overwrite_files.append((relative_path, src_path, None))
+
     if overwrite_files:
-        print("The following files would be overwritten:")
+        print("The following files would be overwritten or added:")
         for rel_path, src, dest in overwrite_files:
-            print(f"Source: {src}")
-            print(f"Destination: {dest}")
+            if dest:
+                print(f"Source: {src}")
+                print(f"Destination: {dest}")
+            else:
+                print(f"Source: {src}")
+                print(f"Destination: Not present")
             print(f"Relative Path: {rel_path}")
             print()
     else:
-        print("No files would be overwritten.")
+        print("No files would be overwritten or added.")
+
+
+def should_exclude(file_name):
+    """Determine if a file should be excluded based on its name."""
+    exclusion_patterns = [
+        ".nextcloudsync.log",
+        ".sync_*"
+    ]
+    for pattern in exclusion_patterns:
+        if fnmatch.fnmatch(file_name, pattern):
+            return True
+    return False
 
 
 def copy_files_if_needed(source_directory, dest_directory):
     """Copy files from source to destination if they don't exist or have different hash values."""
     for root, dirs, files in os.walk(source_directory):
         for file_name in files:
+            if should_exclude(file_name):
+                print(f"Excluded: {file_name}")
+                continue  # Skip files that match exclusion patterns
+
             src_path = os.path.join(root, file_name)
             relative_path = os.path.relpath(src_path, source_directory)
             dest_path = ensure_destination_exists(relative_path, dest_directory)
@@ -125,5 +161,7 @@ def main():
 
 
 if __name__ == "__main__":
+    # Set console output encoding to UTF-8 (if applicable)
+    if sys.stdout.encoding.lower() == 'cp437' or sys.stdout.encoding.lower() == 'charmap':
+        print("Console output encoding may not support all Unicode characters. Consider using an environment with UTF-8 encoding.")
     main()
-
