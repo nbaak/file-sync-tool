@@ -17,5 +17,6 @@ The tool reads al contents from folder a and b. If in folder b files are not the
   -o OUTPUT, --output OUTPUT
                         Output file to write the hashes.
   --hash-only           Create a hash file without copying files.
+  -c, --check           Check for files in the destination that would be overwritten.
 
 ```
